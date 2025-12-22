@@ -11,7 +11,7 @@ import (
 /**
 	NodeService should host an "always running" PageServer, TrackerService
 		PageServer can receive memory pages and store them to disk
-		TrackerService exposes the existing checkpoints, its status, the checkpoint origin (where they come from)
+		LocalTrackerService exposes the existing checkpoints, its status, the checkpoint origin (where they come from)
 			This service can be used by a scheduler plugin to improve scheduling decision
 
 	StageVolume
@@ -39,12 +39,12 @@ var (
 		{
 			Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 		},
-		{
-			Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-		},
-		{
-			Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
-		},
+		// {
+		// 	Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+		// },
+		// {
+		// 	Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
+		// },
 	}
 )
 
@@ -55,9 +55,59 @@ func NewNodeService(nodeID string) *NodeService {
 }
 
 func (n *NodeService) NodeStageVolume(ctx context.Context, request *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	// setup lazy restore server
-	request.
+	// all node level operations to stage for the next step
+
+	// because image pull happens before the csi mounts we can use this phase to convert pulled image un the specific path of the image itself
+	// retrieve checkpoint 
+	// convert pulled image into being the checkpointed one
+
 	return nil, status.Error(codes.Unimplemented, "")
+}
+
+// NodePublishVolume mounts the volume on the node.
+func (n *NodeService) NodePublishVolume(ctx context.Context, request *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+	// might not be needed at all
+
+
+	// volumeID := request.GetVolumeId()
+	// if len(volumeID) == 0 {
+	// 	return nil, status.Error(codes.InvalidArgument, "Volume id not provided")
+	// }
+
+	// target := request.GetTargetPath()
+	// if len(target) == 0 {
+	// 	return nil, status.Error(codes.InvalidArgument, "Target path not provided")
+	// }
+
+	// volCap := request.GetVolumeCapability()
+	// if volCap == nil {
+	// 	return nil, status.Error(codes.InvalidArgument, "Volume capability not provided")
+	// }
+
+	// if !isValidVolumeCapabilities([]*csi.VolumeCapability{volCap}) {
+	// 	return nil, status.Error(codes.InvalidArgument, "Volume capability not supported")
+	// }
+
+	// readOnly := false
+	// if request.GetReadonly() || request.VolumeCapability.AccessMode.GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY {
+	// 	readOnly = true
+	// }
+
+	// options := make(map[string]string)
+	// if m := volCap.GetMount(); m != nil {
+	// 	for _, f := range m.MountFlags {
+	// 		// get mountOptions from PV.spec.mountOptions
+	// 		options[f] = ""
+	// 	}
+	// }
+
+	// if readOnly {
+	// 	// Todo add readonly in your mount options
+	// }
+
+	// TODO modify your volume mount logic here
+
+	return &csi.NodePublishVolumeResponse{}, nil
 }
 
 // NodeUnstageVolume is called by the CO when a workload that was using the specified volume is being moved to a different node.
