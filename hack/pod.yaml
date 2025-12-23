@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: docker-counter-pod
+  namespace: default
+spec:
+  hostNetwork: true
+  nodeName: custom-node
+  containers:
+  - name: docker-counter
+    image: drosenbauer/docker-counter:latest
+    ports:
+    - containerPort: 12345
+      hostPort: 12345
+      protocol: TCP
+    imagePullPolicy: IfNotPresent
