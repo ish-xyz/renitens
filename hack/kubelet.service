@@ -1,0 +1,17 @@
+# /usr/lib/systemd/system/kubelet.service
+[Unit]
+Description=Kubernetes Kubelet
+After=crio.service
+Requires=crio.service
+
+[Service]
+ExecStart=/usr/bin/kubelet \
+  --kubeconfig=/etc/kubernetes/kubelet.conf \
+  --config=/var/lib/kubelet/config.yaml \
+  --hostname-override=custom-node
+
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

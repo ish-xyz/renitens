@@ -1,0 +1,15 @@
+{
+  "metadata": {
+    "name": "test-sandbox1",
+    "namespace": "default",
+    "attempt": 1,
+    "uid": "test-uid-123"
+  },
+  "linux": {
+    "namespaces": [
+      {"type": "network"},
+      {"type": "ipc"},
+      {"type": "pid"}
+    ]
+  }
+}

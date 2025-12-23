@@ -1,0 +1,11 @@
+{
+  "metadata": {
+    "name": "test-container",
+    "attempt": 0
+  },
+  "image": {
+    "image": "busybox:latest"
+  },
+  "command": ["sh", "-c", "while true; do echo hello; sleep 1; done"],
+  "linux": {}
+}
