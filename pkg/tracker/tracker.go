@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ish-xyz/renitens/pkg/config"
 	co "github.com/ish-xyz/renitens/pkg/containerorchestrator"
 	"github.com/ish-xyz/renitens/pkg/storage"
 )
@@ -12,14 +11,23 @@ import (
 type TrackerService struct {
 	store storage.StorageClient
 	co    co.ContainerOrchestratorClient
+	node  node.NodeClient
 }
 
-func (t *TrackerService) ExposeCheckpoints(c *gin.Context) {
+func NewTrackerService(store storage.StorageClient, coClient co.ContainerOrchestratorClient) *TrackerService {
+	return &TrackerService{
+		store: store,
+		co:    coClient,
+		node:  nil,
+	}
+}
+
+func (t *TrackerService) exposeCheckpoints(c *gin.Context) {
 	dump := t.store.Dump()
 	c.JSON(200, dump)
 }
 
-func (t *TrackerService) ReconcileCheckpoints() error {
+func (t *TrackerService) reconcileCheckpoints() error {
 
 	nodes, err := t.co.GetNodes()
 	if err != nil {
@@ -34,18 +42,12 @@ func (t *TrackerService) ReconcileCheckpoints() error {
 	return nil
 }
 
-func (t *TrackerService) Serve() {
-
-	// just for testing, remove later
-	mockClient := t.co.(*co.MockClient)
-	mockClient.SetNodes([]*co.NodeInfo{
-		{Name: "node1", IP: "192.168.1.68"},
-	})
-	t.co = mockClient
+func (t *TrackerService) Run() {
 
 	// Setup Gin router
 	router := gin.Default()
-	router.GET("/api"+config.API_VERSION+"/checkpoints", t.ExposeCheckpoints)
-
+	_ = t.reconcileCheckpoints()
+	router.GET("/api/v1/checkpoints", t.exposeCheckpoints)
 	router.Run("localhost:8080")
+
 }

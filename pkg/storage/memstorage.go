@@ -7,10 +7,12 @@ type MemStorage struct {
 	storeForCheckpoints map[string]*CheckpointInfo
 }
 
-type CheckpointInfo struct {
-	Name         string   `json:"name"`
-	Nodes        []string `json:"nodes"`
-	CreationDate []string `json:"creationDate"`
+func NewMemStorage() *MemStorage {
+	{
+		return &MemStorage{
+			storeForCheckpoints: make(map[string]*CheckpointInfo),
+		}
+	}
 }
 
 func (m *MemStorage) Dump() map[string]*CheckpointInfo {

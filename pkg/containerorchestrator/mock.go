@@ -1,13 +1,19 @@
 package containerorchestrator
 
-type MockClient struct {
+type MockCOClient struct {
 	Nodes []*NodeInfo
 }
 
-func (m *MockClient) SetNodes(nodes []*NodeInfo) {
+func NewMockCOClient() *MockCOClient {
+	return &MockCOClient{
+		Nodes: []*NodeInfo{},
+	}
+}
+
+func (m *MockCOClient) SetNodes(nodes []*NodeInfo) {
 	m.Nodes = nodes
 }
 
-func (m *MockClient) GetNodes() ([]*NodeInfo, error) {
+func (m *MockCOClient) GetNodes() ([]*NodeInfo, error) {
 	return m.Nodes, nil
 }
