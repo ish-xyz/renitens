@@ -3,6 +3,7 @@ package tracker
 import (
 	"fmt"
 	"sort"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	co "github.com/ish-xyz/renitens/pkg/containerorchestrator"
@@ -21,11 +22,6 @@ func NewTrackerService(store storage.StorageClient, coClient co.ContainerOrchest
 	}
 }
 
-func (t *TrackerService) exposeCheckpoints(c *gin.Context) {
-	dump := t.store.Dump()
-	c.JSON(200, dump)
-}
-
 func (t *TrackerService) reconcileCheckpoints() error {
 
 	nodes, err := t.co.GetNodes()
@@ -41,7 +37,19 @@ func (t *TrackerService) reconcileCheckpoints() error {
 	return nil
 }
 
-func findLeastUsedNodes(nodes []*co.NodeInfo, amount int) []*co.NodeInfo {
+func needToExclude(exclusions []string, nodeName string) bool {
+	exclude := false
+	for _, ex := range exclusions {
+		if ex == nodeName {
+			exclude = true
+			break
+		}
+	}
+
+	return exclude
+}
+
+func findLeastUsedNodes(nodes []*co.NodeInfo, amount int, exclusions []string) []*co.NodeInfo {
 	nodesSort := map[int][]*co.NodeInfo{}
 	for _, node := range nodes {
 		nodesSort[len(node.Checkpoints)] = append(nodesSort[len(node.Checkpoints)], node)
@@ -59,6 +67,10 @@ func findLeastUsedNodes(nodes []*co.NodeInfo, amount int) []*co.NodeInfo {
 	for i := 0; i < amount; i++ {
 		_ = nodesSort[keys[i]]
 		for _, n := range nodesSort[keys[i]] {
+			if needToExclude(exclusions, n.Name) {
+				continue
+			}
+
 			filteredNodes = append(filteredNodes, n)
 			if len(filteredNodes) == amount {
 				return filteredNodes
@@ -69,20 +81,41 @@ func findLeastUsedNodes(nodes []*co.NodeInfo, amount int) []*co.NodeInfo {
 	return filteredNodes
 }
 
-func (t *TrackerService) findHostsForNewCheckpoint(amount int, exclude []string) ([]*co.NodeInfo, error) {
-	nodes, err := t.co.GetNodes()
+func (t *TrackerService) serveCheckpoints(c *gin.Context) {
+	dump := t.store.Dump()
+	c.JSON(200, dump)
+}
+
+func (t *TrackerService) serveFindHostsForNewCheckpoint(c *gin.Context) {
+	// get amount from parameters
+	amount, err := strconv.Atoi(c.Query("amount"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get nodes from CO: %v", err)
+		c.JSON(400, map[string]string{"error": "failed to conver amount into int"})
+		return
+	}
+	exclusions := c.QueryArray("exclusions")
+
+	allNodes, err := t.co.GetNodes()
+	if err != nil {
+		c.JSON(500, map[string]string{"error": "failed to retrieve nodes"})
+		return
 	}
 
-	return findLeastUsedNodes(nodes, amount), nil
+	filteredNodes := findLeastUsedNodes(allNodes, amount, exclusions)
+	if len(filteredNodes) < amount {
+		c.JSON(404, map[string]string{"error": "not enough nodes available"})
+		return
+	}
+
+	c.JSON(200, filteredNodes)
 }
 
 func (t *TrackerService) Run() {
 
 	// Setup Gin router
 	router := gin.Default()
-	router.GET("/api/v1/checkpoints", t.exposeCheckpoints)
+	router.GET("/api/v1/checkpoints", t.serveCheckpoints)
+	router.GET("/api/v1/find", t.serveFindHostsForNewCheckpoint)
 	router.Run("localhost:8080")
 
 	// For testing purposes
