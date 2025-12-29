@@ -11,14 +11,12 @@ import (
 type TrackerService struct {
 	store storage.StorageClient
 	co    co.ContainerOrchestratorClient
-	node  node.NodeClient
 }
 
 func NewTrackerService(store storage.StorageClient, coClient co.ContainerOrchestratorClient) *TrackerService {
 	return &TrackerService{
 		store: store,
 		co:    coClient,
-		node:  nil,
 	}
 }
 
@@ -42,12 +40,23 @@ func (t *TrackerService) reconcileCheckpoints() error {
 	return nil
 }
 
+func (t *TrackerService) findHostsForNewCheckpoint(amount int, exclude []string) ([]*co.NodeInfo, error) {
+	nodes, err := t.co.GetNodes()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nodes from CO: %v", err)
+	}
+	// apply some scheduling logic here to pick nodes
+	return nodes, nil
+}
+
 func (t *TrackerService) Run() {
 
 	// Setup Gin router
 	router := gin.Default()
-	_ = t.reconcileCheckpoints()
 	router.GET("/api/v1/checkpoints", t.exposeCheckpoints)
 	router.Run("localhost:8080")
 
+	// For testing purposes
+	_ = t.reconcileCheckpoints()
+	_, _ = t.findHostsForNewCheckpoint(1, []string{})
 }
