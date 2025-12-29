@@ -2,6 +2,7 @@ package tracker
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/gin-gonic/gin"
 	co "github.com/ish-xyz/renitens/pkg/containerorchestrator"
@@ -40,13 +41,41 @@ func (t *TrackerService) reconcileCheckpoints() error {
 	return nil
 }
 
+func findLeastUsedNodes(nodes []*co.NodeInfo, amount int) []*co.NodeInfo {
+	nodesSort := map[int][]*co.NodeInfo{}
+	for _, node := range nodes {
+		nodesSort[len(node.Checkpoints)] = append(nodesSort[len(node.Checkpoints)], node)
+	}
+
+	keys := make([]int, 0, len(nodesSort))
+	for k := range nodesSort {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+
+	filteredNodes := make([]*co.NodeInfo, amount)
+	for i := 0; i < amount; i++ {
+		_ = nodesSort[keys[i]]
+		for _, n := range nodesSort[keys[i]] {
+			filteredNodes = append(filteredNodes, n)
+			if len(filteredNodes) == amount {
+				return filteredNodes
+			}
+		}
+	}
+
+	return filteredNodes
+}
+
 func (t *TrackerService) findHostsForNewCheckpoint(amount int, exclude []string) ([]*co.NodeInfo, error) {
 	nodes, err := t.co.GetNodes()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get nodes from CO: %v", err)
 	}
-	// apply some scheduling logic here to pick nodes
-	return nodes, nil
+
+	return findLeastUsedNodes(nodes, amount), nil
 }
 
 func (t *TrackerService) Run() {

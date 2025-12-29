@@ -5,6 +5,7 @@ type ContainerOrchestratorClient interface {
 }
 
 type NodeInfo struct {
-	Name string
-	IP   string
+	Name        string
+	IP          string
+	Checkpoints []string
 }
