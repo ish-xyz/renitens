@@ -2,6 +2,7 @@ package tracker
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 
@@ -49,36 +50,38 @@ func needToExclude(exclusions []string, nodeName string) bool {
 	return exclude
 }
 
-func findLeastUsedNodes(nodes []*co.NodeInfo, amount int, exclusions []string) []*co.NodeInfo {
-	nodesSort := map[int][]*co.NodeInfo{}
+func findLeastUsedNodes(nodes []*co.NodeInfo, amount int, exclusions []string) ([]*co.NodeInfo, error) {
+	nodesBuckets := map[int][]*co.NodeInfo{}
 	for _, node := range nodes {
-		nodesSort[len(node.Checkpoints)] = append(nodesSort[len(node.Checkpoints)], node)
+		nodesBuckets[len(node.Checkpoints)] = append(nodesBuckets[len(node.Checkpoints)], node)
 	}
 
-	keys := make([]int, 0, len(nodesSort))
-	for k := range nodesSort {
-		keys = append(keys, k)
+	sortedBucketsKeys := make([]int, 0, len(nodesBuckets))
+	for k := range nodesBuckets {
+		sortedBucketsKeys = append(sortedBucketsKeys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
+	sort.Slice(sortedBucketsKeys, func(i, j int) bool {
+		return sortedBucketsKeys[i] < sortedBucketsKeys[j]
 	})
 
-	filteredNodes := make([]*co.NodeInfo, amount)
-	for i := 0; i < amount; i++ {
-		_ = nodesSort[keys[i]]
-		for _, n := range nodesSort[keys[i]] {
+	size := int(math.Min(float64(amount), float64(len(nodes))))
+	filteredNodes := make([]*co.NodeInfo, size)
+	c := 0
+	for _, i := range sortedBucketsKeys {
+		for _, n := range nodesBuckets[i] {
 			if needToExclude(exclusions, n.Name) {
 				continue
 			}
 
-			filteredNodes = append(filteredNodes, n)
-			if len(filteredNodes) == amount {
-				return filteredNodes
+			filteredNodes[c] = n
+			c += 1
+			if c >= size {
+				return filteredNodes, nil
 			}
 		}
 	}
 
-	return filteredNodes
+	return nil, fmt.Errorf("cannot find enough nodes")
 }
 
 func (t *TrackerService) serveCheckpoints(c *gin.Context) {
@@ -101,8 +104,8 @@ func (t *TrackerService) serveFindHostsForNewCheckpoint(c *gin.Context) {
 		return
 	}
 
-	filteredNodes := findLeastUsedNodes(allNodes, amount, exclusions)
-	if len(filteredNodes) < amount {
+	filteredNodes, err := findLeastUsedNodes(allNodes, amount, exclusions)
+	if err != nil {
 		c.JSON(404, map[string]string{"error": "not enough nodes available"})
 		return
 	}
@@ -120,5 +123,5 @@ func (t *TrackerService) Run() {
 
 	// For testing purposes
 	_ = t.reconcileCheckpoints()
-	_, _ = t.findHostsForNewCheckpoint(1, []string{})
+
 }

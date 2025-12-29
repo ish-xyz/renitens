@@ -22,6 +22,6 @@ func Execute() error {
 }
 
 func rootRun(cmd *cobra.Command, args []string) {
-	fmt.Println("here I am")
+	fmt.Println("landing...")
 	return
 }
