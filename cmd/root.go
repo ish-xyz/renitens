@@ -14,7 +14,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
-	rootCmd.AddCommand(csiCmd)
+	rootCmd.AddCommand(trackerCmd)
 }
 
 func Execute() error {
