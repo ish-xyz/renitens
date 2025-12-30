@@ -1,11 +1,17 @@
 package containerorchestrator
 
 type ContainerOrchestratorClient interface {
-	GetNodes() ([]*NodeInfo, error)
+	GetNodes() ([]*Node, error)
 }
 
-type NodeInfo struct {
+type Node struct {
 	Name        string
 	IP          string
 	Checkpoints []string
+}
+
+type Namespace string
+
+type Pod struct {
+	Name string
 }

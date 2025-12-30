@@ -33,6 +33,8 @@ func (t *TrackerService) reconcileCheckpoints() error {
 		// connect to agent on node.IP
 		// get list of checkpoints on that node
 		// for each checkpoint, update centralized index in t.store
+
+		// get a list of pods and checkpoints that should be there
 		_ = node
 	}
 	return nil
@@ -46,12 +48,11 @@ func needToExclude(exclusions []string, nodeName string) bool {
 			break
 		}
 	}
-
 	return exclude
 }
 
-func findLeastUsedNodes(nodes []*co.NodeInfo, amount int, exclusions []string) ([]*co.NodeInfo, error) {
-	nodesBuckets := map[int][]*co.NodeInfo{}
+func findLeastUsedNodes(nodes []*co.Node, amount int, exclusions []string) ([]*co.Node, error) {
+	nodesBuckets := map[int][]*co.Node{}
 	for _, node := range nodes {
 		nodesBuckets[len(node.Checkpoints)] = append(nodesBuckets[len(node.Checkpoints)], node)
 	}
@@ -65,7 +66,7 @@ func findLeastUsedNodes(nodes []*co.NodeInfo, amount int, exclusions []string) (
 	})
 
 	size := int(math.Min(float64(amount), float64(len(nodes))))
-	filteredNodes := make([]*co.NodeInfo, size)
+	filteredNodes := make([]*co.Node, size)
 	c := 0
 	for _, i := range sortedBucketsKeys {
 		for _, n := range nodesBuckets[i] {

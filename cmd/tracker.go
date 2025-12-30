@@ -32,7 +32,7 @@ func trackerSvcRun(cmd *cobra.Command, args []string) error {
 	// just for testing, remove later
 	store := storage.NewMemStorage()
 	mockClient := co.NewMockCOClient()
-	mockClient.SetNodes([]*co.NodeInfo{
+	mockClient.SetNodes([]*co.Node{
 		{Name: "node1", IP: "192.168.1.1", Checkpoints: []string{"x", "y", "z"}},
 		{Name: "node2", IP: "192.168.1.2", Checkpoints: []string{"x"}},
 		{Name: "node3", IP: "192.168.1.3", Checkpoints: []string{"x", "y", "z", "n", "u"}},
