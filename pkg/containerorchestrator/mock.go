@@ -1,31 +1,29 @@
 package containerorchestrator
 
 type MockCOClient struct {
-	Nodes      []*Node
-	Namespaces []*Namespace
-	Pods       []*Pod
+	nodes       []*Node
+	podLocation string
 }
 
 func NewMockCOClient() *MockCOClient {
 	return &MockCOClient{
-		Nodes:      []*Node{},
-		Namespaces: []*Namespace{},
-		Pods:       []*Pod{},
+		nodes:       []*Node{},
+		podLocation: "",
 	}
 }
 
 func (m *MockCOClient) SetNodes(nodes []*Node) {
-	m.Nodes = nodes
+	m.nodes = nodes
 }
 
 func (m *MockCOClient) GetNodes() ([]*Node, error) {
-	return m.Nodes, nil
+	return m.nodes, nil
 }
 
-func (m *MockCOClient) GetNamespaces() ([]*Namespace, error) {
-	return m.Namespaces, nil
+func (m *MockCOClient) SetPodLocation(podLocation string) {
+	m.podLocation = podLocation
 }
 
-func (m *MockCOClient) GetPods(namespace string) ([]*Pod, error) {
-	return m.Pods, nil
+func (m *MockCOClient) GetPodLocation(namespace string, pod string) (string, error) {
+	return m.podLocation, nil
 }

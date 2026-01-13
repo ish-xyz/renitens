@@ -38,6 +38,7 @@ func trackerSvcRun(cmd *cobra.Command, args []string) error {
 		{Name: "node3", IP: "192.168.1.3", Checkpoints: []string{"x", "y", "z", "n", "u"}},
 		{Name: "node4", IP: "192.168.1.4", Checkpoints: []string{}},
 	})
+	mockClient.SetPodLocation("node2")
 	t := tracker.NewTrackerService(store, mockClient)
 	t.Run()
 	return nil

@@ -30,6 +30,7 @@ func (t *TrackerService) reconcileCheckpoints() error {
 		return fmt.Errorf("failed to get nodes from CO: %v", err)
 	}
 	for _, node := range nodes {
+
 		// connect to agent on node.IP
 		// get list of checkpoints on that node
 		// for each checkpoint, update centralized index in t.store
@@ -37,18 +38,14 @@ func (t *TrackerService) reconcileCheckpoints() error {
 		// get a list of pods and checkpoints that should be there
 		_ = node
 	}
-	return nil
-}
 
-func needToExclude(exclusions []string, nodeName string) bool {
-	exclude := false
-	for _, ex := range exclusions {
-		if ex == nodeName {
-			exclude = true
-			break
-		}
-	}
-	return exclude
+	// get all pods
+	// check if checkpoints exists already
+	// if it doesn't schedule
+	// add to desired state
+
+	// nodex -> checkpoints
+	return nil
 }
 
 func findLeastUsedNodes(nodes []*co.Node, amount int, exclusions []string) ([]*co.Node, error) {
@@ -70,7 +67,7 @@ func findLeastUsedNodes(nodes []*co.Node, amount int, exclusions []string) ([]*c
 	c := 0
 	for _, i := range sortedBucketsKeys {
 		for _, n := range nodesBuckets[i] {
-			if needToExclude(exclusions, n.Name) {
+			if contains(exclusions, n.Name) {
 				continue
 			}
 
@@ -85,41 +82,74 @@ func findLeastUsedNodes(nodes []*co.Node, amount int, exclusions []string) ([]*c
 	return nil, fmt.Errorf("cannot find enough nodes")
 }
 
-func (t *TrackerService) serveCheckpoints(c *gin.Context) {
+func (t *TrackerService) serveGetCheckpoints(c *gin.Context) {
 	dump := t.store.Dump()
 	c.JSON(200, dump)
 }
 
-func (t *TrackerService) serveFindHostsForNewCheckpoint(c *gin.Context) {
-	// get amount from parameters
-	amount, err := strconv.Atoi(c.Query("amount"))
+func (t *TrackerService) serveScheduleCheckpoint(c *gin.Context) {
+
+	// get params
+	namespace := c.Param("namespace")
+	pod := c.Param("pod")
+	container := c.Param("container")
+	minDelta, err := strconv.Atoi(c.Param("minDelta"))
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "failed to conver amount into int"})
+		c.JSON(500, "cannot convert minDelta parameter into an integer")
 		return
 	}
-	exclusions := c.QueryArray("exclusions")
-
-	allNodes, err := t.co.GetNodes()
+	replicas, err := strconv.Atoi(c.Param("replicas"))
 	if err != nil {
-		c.JSON(500, map[string]string{"error": "failed to retrieve nodes"})
-		return
-	}
-
-	filteredNodes, err := findLeastUsedNodes(allNodes, amount, exclusions)
-	if err != nil {
-		c.JSON(404, map[string]string{"error": "not enough nodes available"})
+		c.JSON(500, "failed to convert 'replicas' parameter into an integer")
 		return
 	}
 
-	c.JSON(200, filteredNodes)
+	// schedule checkpoints
+	excludeNode, err := t.co.GetPodLocation(namespace, pod)
+	if err != nil {
+		c.JSON(500, "failed to determine pod location")
+		return
+	}
+
+	nodes, err := t.co.GetNodes()
+	if err != nil {
+		c.JSON(500, "failed to list nodes")
+		return
+	}
+
+	var existingNodes []*co.Node
+	now := 1
+	for _, node := range nodes {
+		for _, chk := range node.Checkpoints {
+			if chk.Namespace != namespace || chk.Pod != pod || chk.Container != container {
+				continue
+			}
+			if (now - chk.Timestamp) < minDelta {
+				existingNodes = append(existingNodes, node)
+				break
+			}
+		}
+	}
+
+	newReplicas := replicas - len(existingNodes)
+	if newReplicas > 0 {
+		candidateNodes, err := findLeastUsedNodes(nodes, newReplicas, []string{excludeNode})
+		if err != nil {
+			c.JSON(500, "failed to list nodes")
+			return
+		}
+		existingNodes = append(existingNodes, candidateNodes...)
+	}
+
+	c.JSON(200, fmtMsg(existingNodes))
 }
 
 func (t *TrackerService) Run() {
 
 	// Setup Gin router
 	router := gin.Default()
-	router.GET("/api/v1/checkpoints", t.serveCheckpoints)
-	router.GET("/api/v1/find", t.serveFindHostsForNewCheckpoint)
+	router.GET("/api/v1/checkpoints", t.serveGetCheckpoints)
+	router.GET("/api/v1/schedule/:namespace/:pod/:container/:replicas", t.serveScheduleCheckpoint)
 	router.Run("localhost:8080")
 
 	// For testing purposes
