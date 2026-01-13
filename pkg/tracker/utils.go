@@ -15,6 +15,6 @@ func fmtError(err interface{}) map[string]interface{} {
 	return map[string]interface{}{"error": err}
 }
 
-func fmtMsg(obj interface{}) map[string]interface{} {
-	return map[string]interface{}{"message": obj}
+func fmtData(obj interface{}) map[string]interface{} {
+	return map[string]interface{}{"data": obj}
 }

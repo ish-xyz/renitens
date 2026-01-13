@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	co "github.com/ish-xyz/renitens/pkg/containerorchestrator"
@@ -48,7 +49,7 @@ func (t *TrackerService) reconcileCheckpoints() error {
 	return nil
 }
 
-func findLeastUsedNodes(nodes []*co.Node, amount int, exclusions []string) ([]*co.Node, error) {
+func findLeastUsedNodes(nodes []*co.Node, amount int, exclusions []string) ([]string, error) {
 	nodesBuckets := map[int][]*co.Node{}
 	for _, node := range nodes {
 		nodesBuckets[len(node.Checkpoints)] = append(nodesBuckets[len(node.Checkpoints)], node)
@@ -63,7 +64,7 @@ func findLeastUsedNodes(nodes []*co.Node, amount int, exclusions []string) ([]*c
 	})
 
 	size := int(math.Min(float64(amount), float64(len(nodes))))
-	filteredNodes := make([]*co.Node, size)
+	filteredNodes := make([]string, size)
 	c := 0
 	for _, i := range sortedBucketsKeys {
 		for _, n := range nodesBuckets[i] {
@@ -71,7 +72,7 @@ func findLeastUsedNodes(nodes []*co.Node, amount int, exclusions []string) ([]*c
 				continue
 			}
 
-			filteredNodes[c] = n
+			filteredNodes[c] = n.Name
 			c += 1
 			if c >= size {
 				return filteredNodes, nil
@@ -92,7 +93,6 @@ func (t *TrackerService) serveScheduleCheckpoint(c *gin.Context) {
 	// get params
 	namespace := c.Param("namespace")
 	pod := c.Param("pod")
-	container := c.Param("container")
 	minDelta, err := strconv.Atoi(c.Param("minDelta"))
 	if err != nil {
 		c.JSON(500, "cannot convert minDelta parameter into an integer")
@@ -117,15 +117,15 @@ func (t *TrackerService) serveScheduleCheckpoint(c *gin.Context) {
 		return
 	}
 
-	var existingNodes []*co.Node
-	now := 1
+	var existingNodes []string
+	now := time.Now().Unix()
 	for _, node := range nodes {
 		for _, chk := range node.Checkpoints {
-			if chk.Namespace != namespace || chk.Pod != pod || chk.Container != container {
+			if chk.Namespace != namespace || chk.Pod != pod {
 				continue
 			}
-			if (now - chk.Timestamp) < minDelta {
-				existingNodes = append(existingNodes, node)
+			if (now - chk.Timestamp) < int64(minDelta) {
+				existingNodes = append(existingNodes, node.Name)
 				break
 			}
 		}
@@ -141,7 +141,7 @@ func (t *TrackerService) serveScheduleCheckpoint(c *gin.Context) {
 		existingNodes = append(existingNodes, candidateNodes...)
 	}
 
-	c.JSON(200, fmtMsg(existingNodes))
+	c.JSON(200, fmtData(existingNodes))
 }
 
 func (t *TrackerService) Run() {
@@ -149,7 +149,7 @@ func (t *TrackerService) Run() {
 	// Setup Gin router
 	router := gin.Default()
 	router.GET("/api/v1/checkpoints", t.serveGetCheckpoints)
-	router.GET("/api/v1/schedule/:namespace/:pod/:container/:replicas", t.serveScheduleCheckpoint)
+	router.GET("/api/v1/schedule/:namespace/:pod/:replicas/:minDelta", t.serveScheduleCheckpoint)
 	router.Run("localhost:8080")
 
 	// For testing purposes

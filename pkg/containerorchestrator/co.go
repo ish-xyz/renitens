@@ -12,7 +12,7 @@ type Node struct {
 }
 
 type CheckpointInfo struct {
-	Timestamp int
+	Timestamp int64
 	Namespace string
 	Pod       string
 	Container string

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"time"
+
 	co "github.com/ish-xyz/renitens/pkg/containerorchestrator"
 	"github.com/ish-xyz/renitens/pkg/storage"
 	"github.com/ish-xyz/renitens/pkg/tracker"
@@ -32,14 +34,29 @@ func trackerSvcRun(cmd *cobra.Command, args []string) error {
 	// just for testing, remove later
 	store := storage.NewMemStorage()
 	mockClient := co.NewMockCOClient()
+	ts := time.Now().Unix() - int64(100)
+
+	chk1 := &co.CheckpointInfo{
+		Namespace: "namespace1",
+		Timestamp: ts,
+		Pod:       "example1",
+		Container: "container1",
+	}
+	chk2 := &co.CheckpointInfo{
+		Namespace: "namespace2",
+		Timestamp: ts,
+		Pod:       "example2",
+		Container: "container2",
+	}
+
 	mockClient.SetNodes([]*co.Node{
-		{Name: "node1", IP: "192.168.1.1", Checkpoints: []string{"x", "y", "z"}},
-		{Name: "node2", IP: "192.168.1.2", Checkpoints: []string{"x"}},
-		{Name: "node3", IP: "192.168.1.3", Checkpoints: []string{"x", "y", "z", "n", "u"}},
-		{Name: "node4", IP: "192.168.1.4", Checkpoints: []string{}},
+		{Name: "node1", IP: "192.168.1.1", Checkpoints: []*co.CheckpointInfo{chk1}},
+		{Name: "node2", IP: "192.168.1.2", Checkpoints: []*co.CheckpointInfo{chk1, chk2}},
+		{Name: "node3", IP: "192.168.1.3", Checkpoints: []*co.CheckpointInfo{}},
+		{Name: "node4", IP: "192.168.1.4", Checkpoints: []*co.CheckpointInfo{chk2}},
 	})
 	mockClient.SetPodLocation("node2")
-	t := tracker.NewTrackerService(store, mockClient)
-	t.Run()
+	trk := tracker.NewTrackerService(store, mockClient)
+	trk.Run()
 	return nil
 }
